@@ -1,0 +1,11 @@
+*.exe
+*.pyc
+__pycache__
+build_tmp_*
+*.spec
+主图*.png
+详情页.png
+make_product_images.py
+ColorPicker.exe
+audio_extractor.py
+音频提取器*
