@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>视频音频提取器</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+body {
+  font-family: -apple-system, "Microsoft YaHei UI", "PingFang SC", sans-serif;
+  background: #0f1923; color: #e0e0e0;
+  min-height: 100vh; overflow-x: hidden;
+}
+
+/* ── 顶部 ── */
+.header {
+  background: linear-gradient(135deg, #0077b6, #00b4d8);
+  padding: 20px 16px 16px; text-align: center;
+}
+.header h1 { font-size: 22px; color: #fff; margin-bottom: 4px; }
+.header p { font-size: 13px; color: rgba(255,255,255,0.7); }
+
+/* ── 选项卡 ── */
+.tabs {
+  display: flex; background: #172a3a; margin: 12px 12px 0;
+  border-radius: 12px 12px 0 0; overflow: hidden;
+}
+.tab {
+  flex: 1; padding: 12px; text-align: center; font-size: 14px;
+  font-weight: 600; cursor: pointer; transition: 0.2s;
+  color: #8899aa; border-bottom: 3px solid transparent;
+}
+.tab.active { color: #00b4d8; border-bottom-color: #00b4d8; background: rgba(0,180,216,0.08); }
+
+/* ── 面板 ── */
+.panel {
+  background: #172a3a; margin: 0 12px; padding: 16px;
+  border-radius: 0 0 12px 12px; display: none;
+}
+.panel.active { display: block; }
+
+/* ── 上传区 ── */
+.upload-zone {
+  border: 2px dashed #2a4a5a; border-radius: 12px;
+  padding: 30px 16px; text-align: center;
+  transition: 0.2s; cursor: pointer; position: relative;
+}
+.upload-zone:active, .upload-zone.dragover {
+  border-color: #00b4d8; background: rgba(0,180,216,0.06);
+}
+.upload-zone input[type="file"] {
+  position: absolute; inset: 0; opacity: 0; cursor: pointer;
+}
+.upload-icon { font-size: 36px; margin-bottom: 8px; }
+.upload-text { font-size: 14px; color: #8899aa; }
+.upload-text strong { color: #00b4d8; }
+.file-info {
+  margin-top: 10px; font-size: 13px; color: #06d6a0;
+  display: none; word-break: break-all;
+}
+
+/* ── URL 输入 ── */
+.url-input {
+  width: 100%; background: #0d1117; border: 1px solid #2a4a5a;
+  border-radius: 10px; color: #c9d1d9; font-size: 14px;
+  padding: 14px; resize: vertical; min-height: 120px;
+  outline: none; font-family: inherit;
+}
+.url-input:focus { border-color: #00b4d8; }
+.url-input::placeholder { color: #556677; }
+.paste-btn {
+  display: inline-block; margin-top: 8px; padding: 8px 16px;
+  background: #6c5ce7; color: #fff; border: none; border-radius: 8px;
+  font-size: 13px; cursor: pointer;
+}
+
+/* ── 设置区 ── */
+.settings {
+  background: #172a3a; margin: 12px 12px 0; padding: 16px;
+  border-radius: 12px;
+}
+.settings label {
+  display: block; font-size: 13px; color: #8899aa;
+  margin-bottom: 8px; font-weight: 600;
+}
+.fmt-group {
+  display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px;
+}
+.fmt-btn {
+  flex: 1; min-width: 60px; padding: 10px 0; text-align: center;
+  background: #0d1117; border: 2px solid #2a4a5a; border-radius: 10px;
+  color: #8899aa; font-size: 14px; font-weight: 600;
+  cursor: pointer; transition: 0.2s;
+}
+.fmt-btn.active {
+  border-color: #00b4d8; color: #00b4d8;
+  background: rgba(0,180,216,0.08);
+}
+
+/* ── 复选框 ── */
+.checkbox-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 0; cursor: pointer;
+}
+.checkbox-row input { display: none; }
+.checkmark {
+  width: 22px; height: 22px; border: 2px solid #2a4a5a;
+  border-radius: 6px; display: flex; align-items: center;
+  justify-content: center; transition: 0.2s; flex-shrink: 0;
+}
+.checkbox-row input:checked + .checkmark {
+  background: #00b4d8; border-color: #00b4d8;
+}
+.checkbox-row input:checked + .checkmark::after {
+  content: "✓"; color: #fff; font-size: 14px; font-weight: bold;
+}
+.checkbox-label { font-size: 14px; color: #f0c040; }
+
+/* ── 按钮 ── */
+.start-btn {
+  display: block; width: 100%; padding: 16px; margin: 12px 12px 0;
+  background: linear-gradient(135deg, #06d6a0, #00b4d8);
+  color: #fff; font-size: 17px; font-weight: 700;
+  border: none; border-radius: 12px; cursor: pointer;
+  transition: 0.2s; letter-spacing: 1px;
+}
+.start-btn:active { transform: scale(0.97); opacity: 0.9; }
+.start-btn:disabled {
+  background: #2a4a5a; color: #556677; cursor: not-allowed;
+}
+
+/* ── 日志 ── */
+.log-box {
+  background: #172a3a; margin: 12px; padding: 14px;
+  border-radius: 12px; display: none;
+}
+.log-box.show { display: block; }
+.log-box h3 {
+  font-size: 14px; color: #8899aa; margin-bottom: 10px;
+  display: flex; align-items: center; gap: 6px;
+}
+.log-content {
+  background: #0d1117; border-radius: 8px; padding: 12px;
+  font-family: "Cascadia Code", Consolas, monospace;
+  font-size: 12px; color: #8b949e; max-height: 200px;
+  overflow-y: auto; line-height: 1.6; white-space: pre-wrap;
+  word-break: break-all;
+}
+.log-content .success { color: #06d6a0; }
+.log-content .error { color: #ef476f; }
+.log-content .warn { color: #f0c040; }
+.log-content .info { color: #8b949e; }
+
+/* ── 下载按钮 ── */
+.download-area {
+  margin-top: 12px; display: none; text-align: center;
+}
+.download-area.show { display: block; }
+.dl-btn {
+  display: inline-block; padding: 14px 28px; margin: 4px;
+  background: linear-gradient(135deg, #0077b6, #00b4d8);
+  color: #fff; font-size: 15px; font-weight: 600;
+  border: none; border-radius: 10px; cursor: pointer;
+  text-decoration: none; transition: 0.2s;
+}
+.dl-btn:active { transform: scale(0.96); }
+.dl-btn.video-btn {
+  background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+}
+
+/* ── 底部版权 ── */
+.footer {
+  text-align: center; padding: 16px;
+  font-size: 12px; color: #556677;
+}
+
+/* ── 进度动画 ── */
+.spinner {
+  display: inline-block; width: 16px; height: 16px;
+  border: 2px solid #556677; border-top-color: #00b4d8;
+  border-radius: 50%; animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── 提示条 ── */
+.tip {
+  margin: 12px 12px 0; padding: 12px 14px;
+  background: rgba(0,180,216,0.08); border-left: 3px solid #00b4d8;
+  border-radius: 0 8px 8px 0; font-size: 12px; color: #8899aa;
+  line-height: 1.6;
+}
+</style>
+</head>
+<body>
+
+<!-- 顶部 -->
+<div class="header">
+  <h1>🎬 视频音频提取器</h1>
+  <p>本地文件 + 在线链接 | 一键提取音频</p>
+</div>
+
+<!-- 选项卡 -->
+<div class="tabs">
+  <div class="tab active" onclick="switchTab(0)">📁 本地文件</div>
+  <div class="tab" onclick="switchTab(1)">🔗 在线链接</div>
+</div>
+
+<!-- 本地文件面板 -->
+<div class="panel active" id="panel-file">
+  <div class="upload-zone" id="uploadZone">
+    <input type="file" id="fileInput" accept="video/*,.mp4,.mkv,.avi,.mov,.flv,.wmv,.webm,.m4v,.3gp,.ts,.vob,.rmvb">
+    <div class="upload-icon">📤</div>
+    <div class="upload-text">点击选择或拖拽<strong>视频文件</strong></div>
+    <div class="upload-text" style="margin-top:4px;font-size:12px">MP4/MKV/AVI/MOV/FLV/WMV 等</div>
+    <div class="file-info" id="fileInfo"></div>
+  </div>
+</div>
+
+<!-- 在线链接面板 -->
+<div class="panel" id="panel-url">
+  <textarea class="url-input" id="urlInput" placeholder="粘贴视频链接，每行一个&#10;支持 B站、抖音、微博、小红书、快手等"></textarea>
+  <button class="paste-btn" onclick="pasteFromClipboard()">📋 从剪贴板粘贴</button>
+</div>
+
+<!-- 设置 -->
+<div class="settings">
+  <label>输出格式</label>
+  <div class="fmt-group">
+    <div class="fmt-btn active" onclick="selectFmt(this)">MP3</div>
+    <div class="fmt-btn" onclick="selectFmt(this)">WAV</div>
+    <div class="fmt-btn" onclick="selectFmt(this)">FLAC</div>
+    <div class="fmt-btn" onclick="selectFmt(this)">AAC</div>
+  </div>
+
+  <!-- 同时保存原视频（仅在线链接模式） -->
+  <label class="checkbox-row" id="saveVideoRow" style="display:none">
+    <input type="checkbox" id="saveVideoCheck">
+    <span class="checkmark"></span>
+    <span class="checkbox-label">同时保存原视频</span>
+  </label>
+</div>
+
+<!-- 开始按钮 -->
+<button class="start-btn" id="startBtn" onclick="startExtract()">▶ 开始提取</button>
+
+<!-- 提示 -->
+<div class="tip" id="tipBox">
+  💡 选择视频文件或输入链接，选择格式后点击开始提取。
+</div>
+
+<!-- 日志 -->
+<div class="log-box" id="logBox">
+  <h3><span class="spinner" id="spinner" style="display:none"></span> 处理日志</h3>
+  <div class="log-content" id="logContent"></div>
+</div>
+
+<!-- 下载区 -->
+<div class="download-area" id="downloadArea">
+  <a class="dl-btn" id="dlAudio" href="#" download>⬇ 下载音频</a>
+  <a class="dl-btn video-btn" id="dlVideo" href="#" download style="display:none">⬇ 下载原视频</a>
+</div>
+
+<!-- 版权 -->
+<div class="footer">© 青城杂货 版权所有</div>
+
+<script>
+const API = '';
+let currentTab = 0;
+let selectedFile = null;
+let currentTaskId = null;
+
+// ── 选项卡切换 ──
+function switchTab(idx) {
+  currentTab = idx;
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    t.classList.toggle('active', i === idx);
+  });
+  document.getElementById('panel-file').classList.toggle('active', idx === 0);
+  document.getElementById('panel-url').classList.toggle('active', idx === 1);
+  // 同时保存原视频仅在线链接模式显示
+  document.getElementById('saveVideoRow').style.display = idx === 1 ? 'flex' : 'none';
+}
+
+// ── 格式选择 ──
+function selectFmt(el) {
+  document.querySelectorAll('.fmt-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// ── 文件选择 ──
+const fileInput = document.getElementById('fileInput');
+const fileInfo = document.getElementById('fileInfo');
+fileInput.addEventListener('change', () => {
+  if (fileInput.files.length > 0) {
+    selectedFile = fileInput.files[0];
+    const mb = (selectedFile.size / 1024 / 1024).toFixed(1);
+    fileInfo.textContent = `✅ ${selectedFile.name} (${mb}MB)`;
+    fileInfo.style.display = 'block';
+  }
+});
+
+// ── 拖拽 ──
+const uploadZone = document.getElementById('uploadZone');
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault(); uploadZone.classList.remove('dragover');
+  if (e.dataTransfer.files.length > 0) {
+    selectedFile = e.dataTransfer.files[0];
+    fileInput.files = e.dataTransfer.files;
+    const mb = (selectedFile.size / 1024 / 1024).toFixed(1);
+    fileInfo.textContent = `✅ ${selectedFile.name} (${mb}MB)`;
+    fileInfo.style.display = 'block';
+  }
+});
+
+// ── 剪贴板粘贴 ──
+async function pasteFromClipboard() {
+  try {
+    const text = await navigator.clipboard.readText();
+    document.getElementById('urlInput').value = text;
+  } catch (e) {
+    // fallback
+    document.getElementById('urlInput').focus();
+    document.execCommand('paste');
+  }
+}
+
+// ── 获取格式 ──
+function getFmt() {
+  const active = document.querySelector('.fmt-btn.active');
+  return active ? active.textContent.trim() : 'MP3';
+}
+
+// ── 开始提取 ──
+async function startExtract() {
+  const btn = document.getElementById('startBtn');
+  btn.disabled = true;
+  btn.textContent = '处理中...';
+
+  // 显示日志
+  document.getElementById('logBox').classList.add('show');
+  document.getElementById('logContent').innerHTML = '';
+  document.getElementById('downloadArea').classList.remove('show');
+  document.getElementById('spinner').style.display = 'inline-block';
+  document.getElementById('tipBox').style.display = 'none';
+
+  const fmt = getFmt();
+  let resp;
+
+  try {
+    if (currentTab === 0) {
+      // 本地文件
+      if (!selectedFile) {
+        appendLog('请先选择视频文件', 'error');
+        resetBtn();
+        return;
+      }
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('fmt', fmt);
+      resp = await fetch(`${API}/api/extract-file`, { method: 'POST', body: formData });
+    } else {
+      // 在线链接
+      const url = document.getElementById('urlInput').value.trim();
+      if (!url) {
+        appendLog('请输入视频链接', 'error');
+        resetBtn();
+        return;
+      }
+      const saveVideo = document.getElementById('saveVideoCheck').checked;
+      const formData = new FormData();
+      formData.append('url', url);
+      formData.append('fmt', fmt);
+      formData.append('save_video', saveVideo ? 'true' : 'false');
+      resp = await fetch(`${API}/api/extract-url`, { method: 'POST', body: formData });
+    }
+
+    const data = await resp.json();
+    if (data.error) {
+      appendLog(data.error, 'error');
+      resetBtn();
+      return;
+    }
+
+    currentTaskId = data.task_id;
+    pollStatus(currentTaskId);
+
+  } catch (e) {
+    appendLog('网络错误: ' + e.message, 'error');
+    resetBtn();
+  }
+}
+
+// ── 轮询状态 ──
+async function pollStatus(taskId) {
+  let lastLogLen = 0;
+  const poll = async () => {
+    try {
+      const resp = await fetch(`${API}/api/status/${taskId}`);
+      const data = await resp.json();
+
+      // 更新日志
+      if (data.log && data.log.length > lastLogLen) {
+        for (let i = lastLogLen; i < data.log.length; i++) {
+          const line = data.log[i];
+          let cls = 'info';
+          if (line.includes('成功') || line.includes('已下载')) cls = 'success';
+          else if (line.includes('失败') || line.includes('错误')) cls = 'error';
+          else if (line.includes('取消') || line.includes('警告')) cls = 'warn';
+          appendLog(line, cls);
+        }
+        lastLogLen = data.log.length;
+      }
+
+      if (data.status === 'done') {
+        document.getElementById('spinner').style.display = 'none';
+        const dlAudio = document.getElementById('dlAudio');
+        dlAudio.href = `${API}/api/download/${taskId}?type=audio`;
+        dlAudio.download = data.filename || 'audio';
+        document.getElementById('downloadArea').classList.add('show');
+
+        if (data.video_filename) {
+          const dlVideo = document.getElementById('dlVideo');
+          dlVideo.href = `${API}/api/download/${taskId}?type=video`;
+          dlVideo.download = data.video_filename;
+          dlVideo.style.display = 'inline-block';
+        }
+        resetBtn();
+        return;
+      }
+
+      if (data.status === 'error') {
+        document.getElementById('spinner').style.display = 'none';
+        resetBtn();
+        return;
+      }
+
+      setTimeout(poll, 800);
+    } catch (e) {
+      setTimeout(poll, 1500);
+    }
+  };
+  poll();
+}
+
+// ── 日志 ──
+function appendLog(msg, cls) {
+  const el = document.getElementById('logContent');
+  const span = document.createElement('span');
+  span.className = cls || 'info';
+  span.textContent = msg + '\n';
+  el.appendChild(span);
+  el.scrollTop = el.scrollHeight;
+}
+
+// ── 重置按钮 ──
+function resetBtn() {
+  const btn = document.getElementById('startBtn');
+  btn.disabled = false;
+  btn.textContent = '▶ 开始提取';
+}
+</script>
+</body>
+</html>
