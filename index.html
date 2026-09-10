@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>视频音频提取器</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--bg:#0f1923;--card:#172a3a;--accent:#00b4d8;--green:#06d6a0;--orange:#ff9f1c;--pink:#ef476f;--fg:#e0e0e0;--fg2:#8899aa;--dark:#0d1117;--border:#2a4a5a}
+html,body{height:100%;overflow-x:hidden}
+body{font-family:-apple-system,"Microsoft YaHei UI","PingFang SC",sans-serif;background:var(--bg);color:var(--fg);padding-bottom:env(safe-area-inset-bottom)}
+
+.header{background:linear-gradient(135deg,#0077b6,#00b4d8);padding:20px 16px 16px;text-align:center}
+.header h1{font-size:20px;color:#fff;margin-bottom:3px}
+.header p{font-size:12px;color:rgba(255,255,255,.7)}
+
+.tabs{display:flex;background:var(--card);margin:12px 12px 0;border-radius:12px 12px 0 0;overflow:hidden}
+.tab{flex:1;padding:12px;text-align:center;font-size:14px;font-weight:600;cursor:pointer;transition:.2s;color:var(--fg2);border-bottom:3px solid transparent}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);background:rgba(0,180,216,.08)}
+
+.panel{background:var(--card);margin:0 12px;padding:16px;border-radius:0 0 12px 12px;display:none}
+.panel.active{display:block}
+
+.upload-zone{border:2px dashed var(--border);border-radius:12px;padding:28px 16px;text-align:center;cursor:pointer;position:relative;transition:.2s}
+.upload-zone:active{border-color:var(--accent);background:rgba(0,180,216,.06)}
+.upload-zone input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.upload-icon{font-size:34px;margin-bottom:6px}
+.upload-text{font-size:14px;color:var(--fg2)}
+.upload-text strong{color:var(--accent)}
+.file-info{margin-top:8px;font-size:13px;color:var(--green);display:none;word-break:break-all}
+
+.url-input{width:100%;background:var(--dark);border:1px solid var(--border);border-radius:10px;color:#c9d1d9;font-size:14px;padding:14px;resize:vertical;min-height:110px;outline:none;font-family:inherit}
+.url-input:focus{border-color:var(--accent)}
+.url-input::placeholder{color:#556677}
+
+.paste-btn{display:inline-block;margin-top:8px;padding:8px 16px;background:#6c5ce7;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer}
+
+.settings{background:var(--card);margin:12px 12px 0;padding:16px;border-radius:12px}
+.settings label{display:block;font-size:13px;color:var(--fg2);margin-bottom:8px;font-weight:600}
+.fmt-group{display:flex;gap:8px;flex-wrap:wrap}
+.fmt-btn{flex:1;min-width:55px;padding:10px 0;text-align:center;background:var(--dark);border:2px solid var(--border);border-radius:10px;color:var(--fg2);font-size:14px;font-weight:600;cursor:pointer;transition:.2s}
+.fmt-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(0,180,216,.08)}
+
+.start-btn{display:block;width:calc(100% - 24px);margin:12px auto;padding:16px;background:linear-gradient(135deg,#06d6a0,#00b4d8);color:#fff;font-size:17px;font-weight:700;border:none;border-radius:12px;cursor:pointer;transition:.2s;letter-spacing:1px}
+.start-btn:active{transform:scale(.97);opacity:.9}
+.start-btn:disabled{background:var(--border);color:#556677;cursor:not-allowed}
+
+.progress-wrap{margin:12px 12px 0;background:var(--card);border-radius:12px;padding:16px;display:none}
+.progress-wrap.show{display:block}
+.progress-bar{height:6px;background:var(--dark);border-radius:3px;overflow:hidden;margin-top:8px}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--green));width:0%;transition:width .3s;border-radius:3px}
+.progress-text{font-size:13px;color:var(--fg2);text-align:center}
+
+.log-box{background:var(--card);margin:12px 12px 0;padding:14px;border-radius:12px;display:none}
+.log-box.show{display:block}
+.log-box h3{font-size:14px;color:var(--fg2);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.log-content{background:var(--dark);border-radius:8px;padding:12px;font-family:"Cascadia Code",Consolas,monospace;font-size:12px;color:#8b949e;max-height:180px;overflow-y:auto;line-height:1.6;white-space:pre-wrap;word-break:break-all}
+.lc-ok{color:var(--green)}.lc-err{color:var(--pink)}.lc-warn{color:var(--orange)}.lc-info{color:#8b949e}
+
+.dl-area{margin:12px 12px 0;text-align:center;display:none}
+.dl-area.show{display:block}
+.dl-btn{display:block;width:100%;padding:14px;background:linear-gradient(135deg,#0077b6,#00b4d8);color:#fff;font-size:16px;font-weight:600;border:none;border-radius:10px;cursor:pointer;text-decoration:none;margin-bottom:8px}
+.dl-btn:active{transform:scale(.97)}
+.dl-btn.vid{background:linear-gradient(135deg,#6c5ce7,#a29bfe)}
+
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid #556677;border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.tip{margin:12px 12px 0;padding:12px;background:rgba(0,180,216,.08);border-left:3px solid var(--accent);border-radius:0 8px 8px 0;font-size:12px;color:var(--fg2);line-height:1.6}
+
+.footer{text-align:center;padding:20px 12px;font-size:11px;color:#445566;line-height:1.8}
+
+.check-row{display:flex;align-items:center;gap:10px;padding:10px 0;cursor:pointer}
+.check-row input{display:none}
+.ckbox{width:22px;height:22px;border:2px solid var(--border);border-radius:6px;display:flex;align-items:center;justify-content:center;transition:.2s;flex-shrink:0}
+.check-row input:checked+.ckbox{background:var(--accent);border-color:var(--accent)}
+.check-row input:checked+.ckbox::after{content:"\2713";color:#fff;font-size:14px;font-weight:bold}
+.cklabel{font-size:14px;color:var(--orange)}
+
+.backend-note{margin:12px 12px 0;padding:12px;background:rgba(239,71,111,.08);border-left:3px solid var(--pink);border-radius:0 8px 8px 0;font-size:12px;color:var(--fg2);line-height:1.7;display:none}
+.backend-note.show{display:block}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🎬 视频音频提取器</h1>
+  <p>本地文件 + 在线链接 | 一键提取音频</p>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab(0)">📁 本地文件</div>
+  <div class="tab" onclick="switchTab(1)">🔗 在线链接</div>
+</div>
+
+<div class="panel active" id="pFile">
+  <div class="upload-zone" id="uz">
+    <input type="file" id="fi" accept="video/*,.mp4,.mkv,.avi,.mov,.flv,.wmv,.webm,.m4v,.3gp,.ts,.vob,.rmvb,.mp3,.wav,.aac,.m4a,.flac">
+    <div class="upload-icon">📤</div>
+    <div class="upload-text">点击选择<strong>视频文件</strong></div>
+    <div class="upload-text" style="font-size:12px;margin-top:3px">MP4/MKV/AVI/MOV/FLV 等</div>
+    <div class="file-info" id="fi2"></div>
+  </div>
+</div>
+
+<div class="panel" id="pUrl">
+  <textarea class="url-input" id="urlIn" placeholder="粘贴视频链接，每行一个&#10;支持 B站、抖音、微博、小红书、快手等"></textarea>
+  <button class="paste-btn" onclick="navigator.clipboard.readText().then(t=>document.getElementById('urlIn').value=t).catch(()=>{})">📋 从剪贴板粘贴</button>
+</div>
+
+<div class="backend-note" id="backendNote">
+  ⚠ 在线链接提取需要后端服务。请部署 web_server.py 或填入已有的服务地址。
+  <br><br>
+  <span style="color:var(--fg2)">服务器地址（可选）：</span><br>
+  <input type="text" id="apiBase" placeholder="https://your-server.onrender.com" style="width:100%;margin-top:6px;padding:8px;background:var(--dark);border:1px solid var(--border);border-radius:6px;color:#c9d1d9;font-size:13px;outline:none">
+</div>
+
+<div class="settings">
+  <label>输出格式</label>
+  <div class="fmt-group" id="fmtGroup">
+    <div class="fmt-btn active" onclick="selFmt(this)">MP3</div>
+    <div class="fmt-btn" onclick="selFmt(this)">WAV</div>
+    <div class="fmt-btn" onclick="selFmt(this)">FLAC</div>
+    <div class="fmt-btn" onclick="selFmt(this)">AAC</div>
+  </div>
+</div>
+
+<button class="start-btn" id="startBtn" onclick="startExtract()">▶ 开始提取</button>
+
+<div class="tip" id="tipBox">💡 选择视频文件，点击开始即可在手机上直接提取音频，无需服务器。</div>
+
+<div class="progress-wrap" id="progWrap">
+  <div class="progress-text" id="progText">准备中...</div>
+  <div class="progress-bar"><div class="progress-fill" id="progFill"></div></div>
+</div>
+
+<div class="log-box" id="logBox">
+  <h3><span class="spinner" id="spinner" style="display:none"></span> 处理日志</h3>
+  <div class="log-content" id="logC"></div>
+</div>
+
+<div class="dl-area" id="dlArea"></div>
+
+<div class="footer">
+  © 青城杂货 版权所有<br>
+  视频音频提取器 · 手机版
+</div>
+
+<script>
+let curTab=0,selFile=null,ffmpegObj=null,ffmpegReady=false,busy=false;
+
+function switchTab(i){
+  curTab=i;
+  document.querySelectorAll('.tab').forEach((t,j)=>t.classList.toggle('active',j===i));
+  document.getElementById('pFile').classList.toggle('active',i===0);
+  document.getElementById('pUrl').classList.toggle('active',i===1);
+  document.getElementById('backendNote').classList.toggle('show',i===1);
+}
+function selFmt(el){
+  document.querySelectorAll('.fmt-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+}
+function getFmt(){
+  const a=document.querySelector('.fmt-btn.active');
+  return a?a.textContent.trim():'MP3';
+}
+
+// 文件选择
+const fi=document.getElementById('fi'),fi2=document.getElementById('fi2');
+fi.addEventListener('change',()=>{
+  if(fi.files.length){
+    selFile=fi.files[0];
+    fi2.textContent='✅ '+selFile.name+' ('+(selFile.size/1024/1024).toFixed(1)+'MB)';
+    fi2.style.display='block';
+  }
+});
+
+// 日志
+function log(m,c){
+  const el=document.getElementById('logC'),s=document.createElement('span');
+  s.className=c||'lc-info';s.textContent=m+'\n';
+  el.appendChild(s);el.scrollTop=el.scrollHeight;
+}
+function setProg(pct,txt){
+  document.getElementById('progFill').style.width=pct+'%';
+  if(txt)document.getElementById('progText').textContent=txt;
+}
+
+// 加载 ffmpeg.wasm
+async function loadFFmpeg(){
+  if(ffmpegReady)return true;
+  log('正在加载音频处理引擎...','lc-info');
+  setProg(5,'加载引擎中...');
+  try{
+    const {FFmpeg}=await import('https://esm.sh/@ffmpeg/ffmpeg@0.12.10');
+    const {fetchFile}=await import('https://esm.sh/@ffmpeg/util@0.12.1');
+    const ff=new FFmpeg();
+    ffmpegObj={ff,fetchFile};
+    ff.on('log',({message})=>{
+      // 进度解析
+      const m=message.match(/time=(\d+):(\d+):(\d+\.\d+)/);
+      if(m&&selFile){
+        const sec=parseFloat(m[1])*3600+parseFloat(m[2])*60+parseFloat(m[3]);
+        // 估算进度（不精确，但有参考）
+      }
+    });
+    ff.on('progress',({progress})=>{
+      if(progress>0&&progress<=1){
+        setProg(Math.round(progress*100),'处理中 '+Math.round(progress*100)+'%');
+      }
+    });
+    await ff.load();
+    ffmpegReady=true;
+    log('引擎加载完成','lc-ok');
+    return true;
+  }catch(e){
+    log('引擎加载失败: '+e.message,'lc-err');
+    log('提示：请使用 Chrome 或 Safari 浏览器','lc-warn');
+    return false;
+  }
+}
+
+// 主逻辑
+async function startExtract(){
+  if(busy)return;
+  busy=true;
+  const btn=document.getElementById('startBtn');
+  btn.disabled=true;btn.textContent='处理中...';
+  document.getElementById('logBox').classList.add('show');
+  document.getElementById('logC').innerHTML='';
+  document.getElementById('dlArea').innerHTML='';
+  document.getElementById('dlArea').classList.remove('show');
+  document.getElementById('progWrap').classList.add('show');
+  document.getElementById('spinner').style.display='inline-block';
+  document.getElementById('tipBox').style.display='none';
+
+  try{
+    if(curTab===0){
+      await extractLocal();
+    }else{
+      await extractUrl();
+    }
+  }catch(e){
+    log('错误: '+e.message,'lc-err');
+  }
+  document.getElementById('spinner').style.display='none';
+  btn.disabled=false;btn.textContent='▶ 开始提取';
+  busy=false;
+}
+
+async function extractLocal(){
+  if(!selFile){log('请先选择视频文件','lc-err');return;}
+  if(!await loadFFmpeg())return;
+
+  const fmt=getFmt();
+  const extMap={MP3:'.mp3',WAV:'.wav',FLAC:'.flac',AAC:'.aac'};
+  const argsMap={
+    MP3:['-vn','-acodec','libmp3lame','-q:a','2'],
+    WAV:['-vn','-acodec','pcm_s16le'],
+    FLAC:['-vn','-acodec','flac'],
+    AAC:['-vn','-acodec','aac','-b:a','192k']
+  };
+  const outName='output'+extMap[fmt];
+  const {ff,fetchFile}=ffmpegObj;
+
+  log('开始提取: '+selFile.name,'lc-info');
+  log('输出格式: '+fmt,'lc-info');
+  setProg(10,'写入文件...');
+
+  await ff.writeFile('input',await fetchFile(selFile));
+  setProg(20,'提取音频...');
+  log('正在处理...','lc-info');
+
+  await ff.exec(['-y','-i','input',...argsMap[fmt],outName]);
+
+  const data=await ff.readFile(outName);
+  const blob=new Blob([data.buffer],{type:getMime(fmt)});
+  const url=URL.createObjectURL(blob);
+  const sizeMB=(blob.size/1024/1024).toFixed(1);
+
+  log('提取成功 ('+sizeMB+'MB)','lc-ok');
+  setProg(100,'完成!');
+
+  const baseName=selFile.name.replace(/\.[^.]+$/,'');
+  addDownloadBtn(url,baseName+extMap[fmt],'⬇ 下载音频');
+
+  // 清理
+  try{await ff.deleteFile('input');await ff.deleteFile(outName);}catch(e){}
+}
+
+function getMime(fmt){
+  return{MP3:'audio/mpeg',WAV:'audio/wav',FLAC:'audio/flac',AAC:'audio/aac'}[fmt]||'audio/mpeg';
+}
+
+function addDownloadBtn(url,name,text,cls){
+  const area=document.getElementById('dlArea');
+  area.classList.add('show');
+  const a=document.createElement('a');
+  a.href=url;a.download=name;a.className='dl-btn '+(cls||'');
+  a.textContent=text;
+  area.appendChild(a);
+}
+
+async function extractUrl(){
+  const url=document.getElementById('urlIn').value.trim();
+  if(!url){log('请输入视频链接','lc-err');return;}
+  const apiBase=document.getElementById('apiBase').value.trim().replace(/\/$/,'');
+  if(!apiBase){
+    log('在线链接提取需要后端服务','lc-err');
+    log('请在上方填入服务器地址','lc-warn');
+    log('或使用本地文件模式提取手机里的视频','lc-info');
+    return;
+  }
+
+  const fmt=getFmt();
+  const formData=new FormData();
+  formData.append('url',url);
+  formData.append('fmt',fmt);
+
+  log('正在提交: '+url.substring(0,60)+'...','lc-info');
+  setProg(5,'提交中...');
+
+  try{
+    const resp=await fetch(apiBase+'/api/extract-url',{method:'POST',body:formData});
+    const data=await resp.json();
+    if(data.error){log(data.error,'lc-err');return;}
+    log('任务已提交，ID: '+data.task_id,'lc-info');
+    pollStatus(apiBase,data.task_id);
+  }catch(e){
+    log('连接服务器失败: '+e.message,'lc-err');
+    log('请检查服务器地址是否正确','lc-warn');
+  }
+}
+
+async function pollStatus(base,taskId){
+  let lastLen=0;
+  const poll=async()=>{
+    try{
+      const r=await fetch(base+'/api/status/'+taskId);
+      const d=await r.json();
+      if(d.log&&d.log.length>lastLen){
+        for(let i=lastLen;i<d.log.length;i++){
+          const line=d.log[i];
+          let c='lc-info';
+          if(line.includes('成功')||line.includes('已下载'))c='lc-ok';
+          else if(line.includes('失败')||line.includes('错误'))c='lc-err';
+          log(line,c);
+        }
+        lastLen=d.log.length;
+      }
+      if(d.status==='done'){
+        setProg(100,'完成!');
+        addDownloadBtn(base+'/api/download/'+taskId+'?type=audio',d.filename||'audio.mp3','⬇ 下载音频');
+        if(d.video_filename){
+          addDownloadBtn(base+'/api/download/'+taskId+'?type=video',d.video_filename,'⬇ 下载原视频','vid');
+        }
+        return;
+      }
+      if(d.status==='error'){return;}
+      setProg(50,'处理中...');
+      setTimeout(poll,1000);
+    }catch(e){setTimeout(poll,2000);}
+  };
+  poll();
+}
+</script>
+</body>
+</html>
